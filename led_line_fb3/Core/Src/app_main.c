@@ -6,6 +6,7 @@
  */
 #include "main.h"
 
+
 typedef struct {
 	GPIO_TypeDef* port;
 	uint16_t pin;
@@ -35,11 +36,15 @@ void setup(){
 
 int i = -1;
 int dir = 1;
+
 void loop(){
 	led_set(i,GPIO_PIN_RESET);
+	//button pressed = low GPIO_PIN_RESET
+	if (HAL_GPIO_ReadPin(USER_BUTTON_GPIO_Port, USER_BUTTON_Pin) == GPIO_PIN_RESET)
+			dir*=-1;
 	i = (i + dir) % arr_len;
-	if(i == 0) dir =1;
-	if(i == 9) dir =-1;
+	if(i <= 0) dir =1;
+	if(i >= 9) dir =-1;
 
 	led_set(i,GPIO_PIN_SET);
 	HAL_Delay(800);
