@@ -10,6 +10,8 @@
 #include "usart.h"
 #include "gpio.h"
 #include <string.h>
+#include <stdlib.h>
+#include <stdbool.h>
 
 #define LINE_MAX_LENGTH	80
 #define LINE_BUFFER_OVERRUN -1
@@ -39,8 +41,7 @@ static const pin_t LED[] = {
 		{ LED9_GPIO_Port, LED9_Pin },
 };
 static const unsigned int arr_len = sizeof(LED) /sizeof(LED[0]);
-
-int read_line()
+static  int read_line()
 {
 	uint8_t value;
 	line_length = 0;
@@ -61,22 +62,47 @@ int read_line()
 	return LINE_BUFFER_OVERRUN;
 }
 
-void led_set(unsigned int led, GPIO_PinState state)
+static void led_set(unsigned int led, GPIO_PinState state)
 {
-	unsigned int led_inrange = led % arr_len;
-	HAL_GPIO_WritePin(LED[led_inrange].port, LED[led_inrange].pin, state);
+	if(0 <= led && led <  arr_len)
+		HAL_GPIO_WritePin(LED[led].port, LED[led].pin, state);
 }
 
-void process_command(void){
-	if (strcmp(line_buffer, "ON") == 0) {
-		led_set(0, GPIO_PIN_SET);
-		return;
-	}
-	if (strcmp(line_buffer, "OFF") == 0) {
-		led_set(0, GPIO_PIN_RESET);
-				return;
-	}
-	 HAL_UART_Transmit(&huart2, (const uint8_t*)unknown_message, strlen(unknown_message), HAL_MAX_DELAY);
+static void led_set_all(GPIO_PinState state){
+
+	for(int i = 0; i < arr_len; i++ )
+		led_set(i,state);
+}
+
+static const char separator[2] = " ";
+static  void process_command(void){
+	   /* get the first token */
+	   char* token = strtok(line_buffer, separator);
+	   if(token != NULL)
+	   {
+		   char* token2 = strtok(NULL, separator);
+		   if(token2 != NULL){
+			   bool all = strcasecmp(token2, "ALL") == 0;
+			   int led_no = atoi(token2);
+			   if(strcasecmp(token, "OFF") == 0)
+			   {
+				   if(all)
+					   led_set_all(GPIO_PIN_RESET);
+				   else
+					   led_set(led_no, GPIO_PIN_RESET);
+				   return;
+			   }
+			   if(strcasecmp(token, "ON") == 0)
+			   {
+				   if(all)
+					   led_set_all(GPIO_PIN_SET);
+				   else
+					   led_set(led_no, GPIO_PIN_SET);
+				   return;
+			   }
+		   }
+	   }
+	   HAL_UART_Transmit(&huart2, (const uint8_t*)unknown_message, strlen(unknown_message), HAL_MAX_DELAY);
 }
 
 void setup(){
@@ -88,11 +114,12 @@ void loop(){
 	  switch(read_line_status){
 	  	  case LINE_OK:
 	  		  HAL_UART_Transmit(&huart2, (const uint8_t*)line_buffer, strlen(line_buffer), HAL_MAX_DELAY);
+	  		  HAL_UART_Transmit(&huart2, (const uint8_t*)newline, strlen(newline), HAL_MAX_DELAY);
+	  		  process_command();
 	  		  break;
 	  	  case LINE_BUFFER_OVERRUN:
 	  		  HAL_UART_Transmit(&huart2, (const uint8_t*)overrun_message, strlen(overrun_message), HAL_MAX_DELAY);
 	  		  break;
 	  }
-	  HAL_UART_Transmit(&huart2, (const uint8_t*)newline, strlen(newline), HAL_MAX_DELAY);
-	  process_command();
+
 }
