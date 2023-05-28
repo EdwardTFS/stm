@@ -45,6 +45,7 @@ int read_line()
 	uint8_t value;
 	line_length = 0;
 	while(line_length < LINE_MAX_LENGTH){
+		//HAL timeout na 1 ms ponieważ w przypadku 0 dochodzi do sytuacji gdzie dane są gubione
 		 if(HAL_UART_Receive(&huart2, &value, 1, 1) == HAL_OK){
 			 if (value == '\r' || value == '\n') {
 				 // odebraliśmy znak końca linii
